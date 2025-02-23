@@ -2,12 +2,11 @@ import os
 from langchain_aws import ChatBedrock
 from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import CharacterTextSplitter
-from langchain_huggingface.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import FAISS
-from langchain.chains import RetrievalQA
-from langchain.llms import OpenAI
 from langchain_core.prompts import ChatPromptTemplate
 import os
+import boto3
+from langchain.embeddings import BedrockEmbeddings
 
 AWS_ACCESS_KEY = os.environ.get("AWS_ACCESS")
 AWS_REGION = os.environ.get("AWS_REGION_ID")
@@ -22,7 +21,10 @@ class TextToSQL:
         )
         self.pdf_path = pdf_path
         self.faiss_index_path = faiss_index_path
-        self.embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+        self.bedrock_client = boto3.client(service_name='bedrock-runtime', 
+                              region_name='us-east-1')
+        self.embeddings = BedrockEmbeddings(model_id="amazon.titan-embed-text-v1",
+                                       client=self.bedrock_client)
         self.vectorstore = None
         self.load_documents()
         self.create_vectorstore()
@@ -64,8 +66,8 @@ class TextToSQL:
 
 
 # Example Usage
-if __name__ == "__main__":
-    text2sql = TextToSQL("archive/Students data.pdf", "faiss_index")
-    query = "Fetch the GPA of id number 1141"
-    sql_query = text2sql.generate_sql_query(query)
-    print(sql_query.content)
+# if __name__ == "__main__":
+#     text2sql = TextToSQL("archive/Students data.pdf", "faiss_index")
+#     query = "Fetch the GPA of id number 1141"
+#     sql_query = text2sql.generate_sql_query(query)
+#     print(sql_query.content)

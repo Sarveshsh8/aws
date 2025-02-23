@@ -1,13 +1,14 @@
 import os
 from langchain_aws import ChatBedrock
-from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import CharacterTextSplitter
-from langchain_huggingface.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import FAISS
-from langchain.chains import RetrievalQA
-from langchain.llms import OpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.document_loaders.csv_loader import CSVLoader
+import boto3
+from langchain.embeddings import BedrockEmbeddings
+
+
+
 
 
 AWS_ACCESS_KEY = os.environ.get("AWS_ACCESS")
@@ -20,9 +21,13 @@ class TextToSQL:
             model_id="anthropic.claude-instant-v1",
             model_kwargs=dict(temperature=0),
         )
+        self.bedrock_client = boto3.client(service_name='bedrock-runtime', 
+                              region_name='us-east-1')
         self.csv_path = csv_path
         self.faiss_index_path = faiss_index_path
-        self.embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+        # self.embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+        self.embeddings = BedrockEmbeddings(model_id="amazon.titan-embed-text-v1",
+                                       client=self.bedrock_client)
         self.vectorstore = None
         self.load_documents()
         self.create_vectorstore()
