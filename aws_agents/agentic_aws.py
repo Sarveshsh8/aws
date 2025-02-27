@@ -8,9 +8,10 @@ from crewai.knowledge.storage.knowledge_storage import KnowledgeStorage
 
 
 # CrewAI LLM config uses LiteLLM
-model_id = "anthropic.claude-3-5-sonnet-20240620-v1:0"
+model_name = "claude" #llama you can choose your llm
+model_id = "arn:aws:bedrock:us-east-1:086734376398:imported-model/r4c4kewx2s0n" ## you can pass your arn model id
 
-llm = LLM(model=f"bedrock/{model_id}")
+llm = LLM(model=f"bedrock/{model_name}/{model_id}")
 
 
 csv_source = CSVKnowledgeSource(
