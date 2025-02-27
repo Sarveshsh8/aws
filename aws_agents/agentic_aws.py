@@ -74,7 +74,7 @@ sql_des_agent = Agent(
     role="Text Summary",
     goal="To generate a concise and accurate summary of a given pdf document, capturing its key points while maintaining clarity and relevance.",
     backstory="""You are a Text Summary agent specializing in extracting key information from documents to generate concise and meaningful summaries.
-                Your query : {topic2s}
+                Your query : {topic2}
                  Your role is to analyze the content, identify essential details, and present a clear, structured summary while maintaining accuracy, relevance, and coherence.""",
     allow_delegation=True,
     verbose=False,
@@ -103,6 +103,7 @@ crew = Crew(
     tasks = [sql_plan,sql_des_plan],
     process = Process.sequential,
     max_rpm =10,
+    memory=True,
     cache=True,
     knowledge_sources=[csv_source,pdf_source],
     verbose=True,
