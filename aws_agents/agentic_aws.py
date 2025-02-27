@@ -71,7 +71,7 @@ sql_plan = Task(
 sql_des_agent = Agent(
     llm=llm,
     role="Text Summary",
-    goal="To generate a concise and accurate summary of a given document, capturing its key points while maintaining clarity and relevance.",
+    goal="To generate a concise and accurate summary of a given pdf document, capturing its key points while maintaining clarity and relevance.",
     backstory="""You are a Text Summary agent specializing in extracting key information from documents to generate concise and meaningful summaries.
                 Your query : {topic}
                  Your role is to analyze the content, identify essential details, and present a clear, structured summary while maintaining accuracy, relevance, and coherence.""",
@@ -107,7 +107,7 @@ crew = Crew(
     verbose=True,
 )
 
-query = {"topic": "Fetch me the GPA of ID 1141"}
+query = {"topic": "Fetch me the GPA of ID 1141 and give me the summary of the given document"}
 
 result = crew.kickoff(inputs=query)
 
