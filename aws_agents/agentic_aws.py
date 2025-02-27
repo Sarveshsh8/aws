@@ -37,7 +37,7 @@ sql_agent = Agent(
     role="Text2Sql",
     goal="To generate SQL queries based on natural language user queries, ensuring accuracy, efficiency, and relevance to the requested data retrieval task.",
     backstory="""You are a Text2SQL agent specializing in converting user queries written in natural language into optimized SQL queries.
-                 Your query : {topic}
+                 Your query : {topic1}
                  Your role is to understand the user's intent, identify relevant database tables, columns, and conditions, and construct syntactically correct and efficient SQL statements. 
                  You ensure that the generated queries retrieve the precise data needed while following best practices for performance and security.""",
     allow_delegation=True,
@@ -73,7 +73,7 @@ sql_des_agent = Agent(
     role="Text Summary",
     goal="To generate a concise and accurate summary of a given pdf document, capturing its key points while maintaining clarity and relevance.",
     backstory="""You are a Text Summary agent specializing in extracting key information from documents to generate concise and meaningful summaries.
-                Your query : {topic}
+                Your query : {topic2s}
                  Your role is to analyze the content, identify essential details, and present a clear, structured summary while maintaining accuracy, relevance, and coherence.""",
     allow_delegation=True,
     verbose=False,
@@ -107,10 +107,9 @@ crew = Crew(
     verbose=True,
 )
 
-query = {"topic": "Fetch me the GPA of ID 1141 and give me the summary of the given document"}
+query = {"topic1": "Fetch me the GPA of ID 1141 ","topic2":"give me the summary of the given document"}
 
 result = crew.kickoff(inputs=query)
-
 
 agent_output= [i.raw for i in result.tasks_output]
 
