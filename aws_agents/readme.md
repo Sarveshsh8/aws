@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project utilizes CrewAI to create two AI agents: one for generating SQL queries from natural language queries and another for summarizing text documents. The system integrates knowledge sources from CSV and PDF files while leveraging AWS Bedrock's Anthropic Claude-3.5 Sonnet for natural language processing.
+This project utilizes CrewAI to create two AI agents: one for generating SQL queries from natural language queries and another for summarizing text documents. The system integrates knowledge sources from CSV and PDF files while leveraging AWS Bedrock's models for natural language processing.
 
 ## Dependencies
 
@@ -17,7 +17,7 @@ pip install crewai pandas
 The project is configured to use AWS Bedrock as the LLM provider. The model used is:
 
 ```python
-model_id = "provide the model id"
+model_id = "model_id"
 ```
 
 Additionally, an embedding configuration is defined as:
@@ -26,7 +26,7 @@ Additionally, an embedding configuration is defined as:
 config = {
     "provider": "aws_bedrock",
     "config":{
-      "model": "amazon.titan-embed-text-v2:0",
+      "model": "embedding model id",
       "vector_dimension": 1024
     }
 }
@@ -90,13 +90,21 @@ agent_output = [i.raw for i in result.tasks_output]
 print('agent_outputs', agent_output)
 ```
 
+### How to Run the Code
+
+To run the script, execute the following command in your terminal:
+
+```bash
+python agentic_aws.py
+```
+
 ## File Structure
 
 ```
 project_folder/
 |-- data.csv  # CSV data source
 |-- details.pdf  # PDF data source
-|-- main.py  # Python script for executing the agents
+|-- agentic_aws.py  # Python script for executing the agents
 |-- README.md  # This document
 ```
 
@@ -110,3 +118,7 @@ project_folder/
 ## Author
 
 Sarvesh
+
+## License
+
+This project is licensed under the MIT License.
