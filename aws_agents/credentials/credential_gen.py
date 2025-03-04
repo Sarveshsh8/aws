@@ -17,7 +17,7 @@
 
 # print("response",response)
 
-
+#link to the tutorial - https://bobbyhadz.com/blog/install-and-use-jq-on-windows
 
 import subprocess
 import json
