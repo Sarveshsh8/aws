@@ -25,8 +25,8 @@ import configparser
 import os
 
 # Define role ARN and session name
-ROLE_ARN = "arn:aws:iam::942286715197:role/app-bedrock-access-900858-us-east-1"
-SESSION_NAME = "allowed-session-user123"
+ROLE_ARN = "arn:aws:iam::942286715197:role/108866-application-engineer"
+SESSION_NAME = "app-engineer-session"
 
 # Get AWS credentials file path for Windows
 AWS_CREDENTIALS_PATH = os.path.join(os.getenv("USERPROFILE"), ".aws", "credentials")
