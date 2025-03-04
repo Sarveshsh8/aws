@@ -25,8 +25,11 @@ import configparser
 import os
 
 # Define role ARN and session name
-ROLE_ARN = "add your arn number"
-SESSION_NAME = "session name"
+ROLE_ARN = "arn:aws:iam::942286715197:role/app-bedrock-access-900858-us-east-1"
+SESSION_NAME = "allowed-session-user123"
+
+# Get AWS credentials file path for Windows
+AWS_CREDENTIALS_PATH = os.path.join(os.getenv("USERPROFILE"), ".aws", "credentials")
 
 def assume_role():
     """Runs AWS CLI assume-role command and returns credentials."""
@@ -37,7 +40,7 @@ def assume_role():
             "--role-session-name", SESSION_NAME,
             "--output", "json"
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, shell=True)
         credentials = json.loads(result.stdout)['Credentials']
         return credentials
     except subprocess.CalledProcessError as e:
@@ -45,11 +48,12 @@ def assume_role():
         return None
 
 def update_aws_credentials(credentials, profile_name="assumed-role"):
-    """Updates the ~/.aws/credentials file with new temporary credentials."""
-    aws_credentials_path = os.path.expanduser("~/.aws/credentials")
-    
+    """Updates the AWS credentials file with new temporary credentials."""
     config = configparser.ConfigParser()
-    config.read(aws_credentials_path)
+
+    # Read existing credentials
+    if os.path.exists(AWS_CREDENTIALS_PATH):
+        config.read(AWS_CREDENTIALS_PATH)
 
     if profile_name not in config:
         config.add_section(profile_name)
@@ -58,7 +62,8 @@ def update_aws_credentials(credentials, profile_name="assumed-role"):
     config[profile_name]['aws_secret_access_key'] = credentials['SecretAccessKey']
     config[profile_name]['aws_session_token'] = credentials['SessionToken']
     
-    with open(aws_credentials_path, 'w') as configfile:
+    # Write updated credentials back
+    with open(AWS_CREDENTIALS_PATH, 'w') as configfile:
         config.write(configfile)
     
     print(f"AWS credentials updated under profile: [{profile_name}]")
@@ -67,3 +72,4 @@ if __name__ == "__main__":
     credentials = assume_role()
     if credentials:
         update_aws_credentials(credentials)
+
