@@ -100,3 +100,12 @@ class TextToSQL:
 #     query = "Fetch the GPA of id number 1141"
 #     sql_query = text2sql.generate_sql_query(query)
 #     print(sql_query)
+
+
+
+
+# model_kwargs={
+#         "max_tokens_to_sample": 2000,  # This is the required parameter that's missing
+#         "temperature": 0.0,
+#         # other parameters as needed
+#     }
