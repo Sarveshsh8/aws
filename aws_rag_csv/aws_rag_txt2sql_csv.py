@@ -6,6 +6,8 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.document_loaders.csv_loader import CSVLoader
 import boto3
 from langchain.embeddings import BedrockEmbeddings
+from langchain_aws import BedrockLLM
+
 
 
 
@@ -17,7 +19,7 @@ AWS_SECRET = os.environ.get("AWS_SECRET")
 
 class TextToSQL:
     def __init__(self, csv_path: str, faiss_index_path: str):
-        self.llm = ChatBedrock(
+        self.llm = BedrockLLM(
             model_id="anthropic.claude-instant-v1",
             model_kwargs=dict(temperature=0),
         )
