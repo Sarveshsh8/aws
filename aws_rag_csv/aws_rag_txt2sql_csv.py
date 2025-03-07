@@ -80,14 +80,23 @@ class TextToSQL:
         """Generates an SQL query based on the retrieved context and user query."""
         context = self.retrieve_context(query)
         # Create a single prompt string instead of using ChatPromptTemplate
-        prompt_text = f"""You are an expert in Text-to-SQL conversion. Your task is to understand the given context and the question carefully, then generate an accurate SQL query based on the provided information.
+        # prompt_text = f"""You are an expert in Text-to-SQL conversion. Your task is to understand the given context and the question carefully, then generate an accurate SQL query based on the provided information.
 
-        {context}
+        # {context}
 
-        Ensure that the output strictly follows SQL syntax and aligns with the context. Do not include any explanations, clarifications, or additional details—only provide the SQL query as the final output.
+        # Ensure that the output strictly follows SQL syntax and aligns with the context. Do not include any explanations, clarifications, or additional details—only provide the SQL query as the final output.
 
-        Question: {query}
-        SQL Query:"""
+        # Question: {query}
+        # SQL Query:"""
+        from langchain.prompts import PromptTemplate
+        prompt_text = PromptTemplate.from_template(
+        """Human: You are an expert in Text-to-SQL conversion. Your task is to understand the given context and the question carefully, then generate an accurate SQL query based on the provided information.
+
+{context}
+
+Question: {question}
+
+Ensure that the output strictly follows SQL syntax and aligns with the context. Do not include any explanations, clarifications, or additional details—only provide the SQL query as the final output.""")
 
         # Use the BedrockLLM directly with the prompt string
         response = self.llm.invoke(prompt_text)
@@ -109,3 +118,14 @@ class TextToSQL:
 #         "temperature": 0.0,
 #         # other parameters as needed
 #     }
+
+from langchain.prompts import PromptTemplate
+
+prompt_template = PromptTemplate.from_template(
+        """Human: You are an expert in Text-to-SQL conversion. Your task is to understand the given context and the question carefully, then generate an accurate SQL query based on the provided information.
+
+{context}
+
+Question: {question}
+
+Ensure that the output strictly follows SQL syntax and aligns with the context. Do not include any explanations, clarifications, or additional details—only provide the SQL query as the final output.""")
