@@ -7,6 +7,7 @@ from langchain_community.document_loaders.csv_loader import CSVLoader
 import boto3
 from langchain.embeddings import BedrockEmbeddings
 from langchain_aws import BedrockLLM
+import json
 
 AWS_ACCESS_KEY = os.environ.get("AWS_ACCESS")
 AWS_REGION = os.environ.get("AWS_REGION_ID")
@@ -29,7 +30,8 @@ class TextToSQL:
         self.load_documents()
         self.create_vectorstore()
         self.load_vectorstore()
-        self.session
+        self.session = boto3.Session(profile_name="test")
+        self.client = self.session.client("bedrock-runtime")
 
     def load_documents(self):
         """Loads and splits the CSV document into chunks."""
@@ -59,63 +61,39 @@ class TextToSQL:
         content = [doc.page_content for doc in retrived_output]
         return "\n".join(content)
 
+    # def generate_sql_query(self, query: str):
+    #     """Generates an SQL query based on the retrieved context and user query."""
+    #     context = self.retrieve_context(query)
+        
+    #     # human = "{text}"
+    #     messages = [
+    #         ("human","{question}"),
+    #     ]
+    #     prompt = ChatPromptTemplate.from_messages(messages)
+    #     chain = prompt | self.llm
+    #     system = f"""You are an expert in Text-to-SQL conversion. Your task is to understand the given context and the question carefully, then generate an accurate SQL query based on the provided information.
+    #     {context}
+    #     Ensure that the output strictly follows SQL syntax and aligns with the context. Do not include any explanations, clarifications, or additional details—only provide the SQL query as the final output.
+    #     {query}
+    #     """
+    #     # return chain.invoke()
+    #     return chain.invoke({"text": system})
+
+
     def generate_sql_query(self, query: str):
         """Generates an SQL query based on the retrieved context and user query."""
         context = self.retrieve_context(query)
-        
-        # human = "{text}"
-        messages = [
-            ("human","{question}"),
-        ]
-        prompt = ChatPromptTemplate.from_messages(messages)
-        chain = prompt | self.llm
         system = f"""You are an expert in Text-to-SQL conversion. Your task is to understand the given context and the question carefully, then generate an accurate SQL query based on the provided information.
         {context}
         Ensure that the output strictly follows SQL syntax and aligns with the context. Do not include any explanations, clarifications, or additional details—only provide the SQL query as the final output.
         {query}
         """
-        # return chain.invoke()
-        return chain.invoke({"text": system})
+        input_text = json.dumps({"input_text":system})
+        response = self.client.invoke_model(model_id = model_id,
+                                            body=input_text)
+
+        output = response['body'].read().decode('utf-8')
+        model_response = json.loads(output)
+        response_text = model_response["results"][0]["outputText"]
+        return response_text
     
-#     def generate_sql_query(self, query: str):
-#         """Generates an SQL query based on the retrieved context and user query."""
-#         context = self.retrieve_context(query)
-#         # Create a single prompt string instead of using ChatPromptTemplate
-#         # prompt_text = f"""You are an expert in Text-to-SQL conversion. Your task is to understand the given context and the question carefully, then generate an accurate SQL query based on the provided information.
-
-#         # {context}
-
-#         # Ensure that the output strictly follows SQL syntax and aligns with the context. Do not include any explanations, clarifications, or additional details—only provide the SQL query as the final output.
-
-#         # Question: {query}
-#         # SQL Query:"""
-#         from langchain.prompts import PromptTemplate
-#         prompt_text = PromptTemplate.from_template(
-#         """Human: You are an expert in Text-to-SQL conversion. Your task is to understand the given context and the question carefully, then generate an accurate SQL query based on the provided information.
-
-# {context}
-
-# Question: {question}
-
-# Ensure that the output strictly follows SQL syntax and aligns with the context. Do not include any explanations, clarifications, or additional details—only provide the SQL query as the final output.""")
-
-#         # Use the BedrockLLM directly with the prompt string
-#         response = self.llm.invoke(prompt_text)
-#         return response
-
-
-# # Example Usage
-# if __name__ == "__main__":
-#     text2sql = TextToSQL("archive/Students data.csv", "faiss_index_csv")
-#     query = "Fetch the GPA of id number 1141"
-#     sql_query = text2sql.generate_sql_query(query)
-#     print(sql_query)
-
-
-
-
-# model_kwargs={
-#         "max_tokens_to_sample": 2000,  # This is the required parameter that's missing
-#         "temperature": 0.0,
-#         # other parameters as needed
-#     }
