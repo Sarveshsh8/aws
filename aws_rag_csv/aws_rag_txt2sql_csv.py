@@ -63,17 +63,35 @@ class TextToSQL:
         content = [doc.page_content for doc in retrived_output]
         return "\n".join(content)
 
+    # def generate_sql_query(self, query: str):
+    #     """Generates an SQL query based on the retrieved context and user query."""
+    #     context = self.retrieve_context(query)
+    #     system = f"""You are an expert in Text-to-SQL conversion. Your task is to understand the given context and the question carefully, then generate an accurate SQL query based on the provided information.
+    #     {context}
+    #     Ensure that the output strictly follows SQL syntax and aligns with the context. Do not include any explanations, clarifications, or additional details—only provide the SQL query as the final output.
+    #     """
+    #     human = "{text}"
+    #     prompt = ChatPromptTemplate.from_messages([("system", system), ("human", human)])
+    #     chain = prompt | self.llm
+    #     return chain.invoke()
+    #     return chain.invoke({"text": query})
+    
     def generate_sql_query(self, query: str):
         """Generates an SQL query based on the retrieved context and user query."""
         context = self.retrieve_context(query)
-        system = f"""You are an expert in Text-to-SQL conversion. Your task is to understand the given context and the question carefully, then generate an accurate SQL query based on the provided information.
+        # Create a single prompt string instead of using ChatPromptTemplate
+        prompt_text = f"""You are an expert in Text-to-SQL conversion. Your task is to understand the given context and the question carefully, then generate an accurate SQL query based on the provided information.
+
         {context}
+
         Ensure that the output strictly follows SQL syntax and aligns with the context. Do not include any explanations, clarifications, or additional details—only provide the SQL query as the final output.
-        """
-        human = "{text}"
-        prompt = ChatPromptTemplate.from_messages([("system", system), ("human", human)])
-        chain = prompt | self.llm
-        return chain.invoke({"text": query})
+
+        Question: {query}
+        SQL Query:"""
+
+        # Use the BedrockLLM directly with the prompt string
+        response = self.llm.invoke(prompt_text)
+        return response
 
 
 # # Example Usage
