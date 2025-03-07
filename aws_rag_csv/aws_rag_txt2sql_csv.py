@@ -122,9 +122,9 @@ class TextToSQL:
 from langchain_aws import BedrockLLM
 
 model = BedrockLLM(
-    aws_access_key_id="my-access-key-id",
-    aws_secret_access_key="my-secret-access",
-    aws_session_token="my-session-token",
+    aws_access_key_id=aws_access_key_id,
+    aws_secret_access_key=aws_secret_access_key,
+    aws_session_token=aws_session_token,
     region="us-east-1",
     provider="bedrock",
     model_id="custom-imported-model-ARN",  # ARN like 'arn:aws:bedrock:...' obtained via provisioning the custom model
