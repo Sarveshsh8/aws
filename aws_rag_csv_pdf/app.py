@@ -41,7 +41,8 @@ async def handle_message(message: cl.Message):
     # Process user query after both files are uploaded
     user_query = message.content.strip()
     response = text2sql.generate_sql_query(user_query)
-    out = json.loads(response.content)
+
+    out = json.loads(response)
     Answer = out.get('Answer', 'No answer provided')  # Fetch the answer safely
     SQL = out.get('SQL Query', None)  # Fetch the SQL query safely
 
