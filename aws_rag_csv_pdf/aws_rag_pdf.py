@@ -1,7 +1,7 @@
 import os
 import logging
 import boto3
-from langchain.aws import BedrockEmbeddings, ChatBedrock
+from langchain_aws import BedrockEmbeddings, ChatBedrock
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate
@@ -34,7 +34,7 @@ class TextToSQL:
         self.faiss_index_path = faiss_index_path
         self.embeddings = bedrock_embeddings
         self.vectorstore = None
-
+        self.docs = []
         self.load_csv_documents()
         self.load_pdf_documents()
         self.create_vectorstore()
