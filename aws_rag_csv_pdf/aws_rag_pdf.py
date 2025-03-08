@@ -110,18 +110,13 @@ class TextToSQL:
         prompt = {
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": 2048,
+            "system": """You are an expert AI assistant for Text-to-SQL conversion.
+                **Task:**
+                - First, analyze the PDF explanation and CSV data structure to understand the context
+                - Based on the user's question:
+                * If it requires data retrieval, provide a brief answer based on the PDF context AND generate a SQL query
+                * If it doesn't require SQL querying, provide an explanation only and set SQL query to null""",
             "messages": [
-                {
-                    "role": "system",
-                    "content": """
-                            You are an expert AI assistant for Text-to-SQL conversion.
-                            **Task:**
-                            - First, analyze the PDF explanation and CSV data structure to understand the context
-                            - Based on the user's question:
-                            * If it requires data retrieval, provide a brief answer based on the PDF context AND generate a SQL query
-                            * If it doesn't require SQL querying, provide an explanation only and set SQL query to null
-"""
-                },
                 {
                     "role": "user",
                     "content": f"""Explanation:\n{pdf_context}\n\nData Structure:\n{csv_context}\n\nQuestion: {query}\n\n**Instructions:**
