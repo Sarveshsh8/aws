@@ -15,9 +15,9 @@ logger = logging.getLogger(__name__)
 
 # Use temporary credentials directly
 assumed_role_session = boto3.Session(
-    aws_access_key_id="ASIA5FZFKHE04U5FRCAR",
-    aws_secret_access_key="6ExERy/19/7AtkO3hmaq90arOuiZ3ZX0doDCC/",
-    aws_session_token="QJoBJjJpZZLxvJ2yQAQCVzlyNeaJQUsJfNEYCIQCUKNffEDtc6qn8J0VsCrYEmxkOnUplFUov93Q/SZVtsyAIAhfqcZnkCnLCL53cwHfgcG8m7Zfkq5oC"
+    aws_access_key_id="",
+    aws_secret_access_key="",
+    aws_session_token=""
 )
 
 bedrock_client = assumed_role_session.client("bedrock-runtime")
