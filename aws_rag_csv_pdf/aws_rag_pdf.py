@@ -25,7 +25,6 @@ assumed_role_session = boto3.Session(
 bedrock_client = assumed_role_session.client("bedrock-runtime")
 bedrock_embeddings = BedrockEmbeddings(
     model_id=os.getenv("EMBED_MODEL_ID"),
-    region="us-east-1",
     client=bedrock_client
 )
 
