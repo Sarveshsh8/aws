@@ -6,7 +6,6 @@ from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.document_loaders.csv_loader import CSVLoader
-from langchain.aws import BedrockLLM
 import json
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.document_loaders import PyMuPDFLoader, CSVLoader
