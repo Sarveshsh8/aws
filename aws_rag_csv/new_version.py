@@ -88,7 +88,7 @@ class TextToSQL:
         Ensure that the output strictly follows SQL syntax and aligns with the context. Do not include any explanations, clarifications, or additional details—only provide the SQL query as the final output.
         {query}
         """
-        input_text = json.dumps({"input_text":system})
+        input_text = json.dumps({"inputText":system})
         response = self.client.invoke_model(model_id = model_id,
                                             body=input_text)
 
