@@ -29,15 +29,15 @@ bedrock_embeddings = BedrockEmbeddings(
 )
 
 class TextToSQL:
-    def __init__(self, csv_path: str, faiss_index_path: str):
+    def __init__(self, csv_path: str, pdf_path: str, faiss_index_path: str):
         self.csv_path = csv_path
+        self.pdf_path = pdf_path
         self.faiss_index_path = faiss_index_path
         self.embeddings = bedrock_embeddings
         self.vectorstore = None
 
         self.load_csv_documents()
         self.load_pdf_documents()
-        self.load_documents()
         self.create_vectorstore()
         self.load_vectorstore()
         self.session = boto3.Session(profile_name="test")
