@@ -15,9 +15,9 @@ logger = logging.getLogger(__name__)
 
 # Use temporary credentials directly
 assumed_role_session = boto3.Session(
-    aws_access_key_id="ASIA5FZFKHE04U5FRCAR",
-    aws_secret_access_key="6ExERy/19/7AtkO3hmaq90arOuiZ3ZX0doDCC/",
-    aws_session_token="QJoBJjJpZZLxvJ2yQAQCVzlyNeaJQUsJfNEYCIQCUKNffEDtc6qn8J0VsCrYEmxkOnUplFUov93Q/SZVtsyAIAhfqcZnkCnLCL53cwHfgcG8m7Zfkq5oC"
+    aws_access_key_id="",
+    aws_secret_access_key="",
+    aws_session_token=""
 )
 
 bedrock_client = assumed_role_session.client("bedrock-runtime")
@@ -34,8 +34,8 @@ class TextToSQL:
         self.embeddings = bedrock_embeddings
         self.vectorstore = None
         self.llm = BedrockLLM(
-            model_id="900858-anthropic-claude-instant-v1",
-            model_arn="arn:aws:bedrock:us-east-1:942268715197:application-inference-profile/4e1x5fvs8bmn",
+            model_id="",
+            model_arn="",
             model_kwargs={
                 "max_tokens_to_sample": 2000,
                 "temperature": 0.0
