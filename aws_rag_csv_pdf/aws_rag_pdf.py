@@ -17,14 +17,14 @@ logger = logging.getLogger(__name__)
 
 # Use temporary credentials directly
 assumed_role_session = boto3.Session(
-    aws_access_key_id="ASIA5FZFKHE04U5FRCAR",
-    aws_secret_access_key="6ExERy/19/7AtkO3hmaq90arOuiZ3ZX0doDCC/",
-    aws_session_token="QJoBJjJpZZLxvJ2yQAQCVzlyNeaJQUsJfNEYCIQCUKNffEDtc6qn8J0VsCrYEmxkOnUplFUov93Q/SZVtsyAIAhfqcZnkCnLCL53cwHfgcG8m7Zfkq5oC"
+    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+    aws_session_token=os.getenv("AWS_SESSION_TOKEN")
 )
 
 bedrock_client = assumed_role_session.client("bedrock-runtime")
 bedrock_embeddings = BedrockEmbeddings(
-    model_id="amazon.titan-embed-text-v1",
+    model_id=os.getenv("EMBED_MODEL_ID"),
     region="us-east-1",
     client=bedrock_client
 )
@@ -35,14 +35,6 @@ class TextToSQL:
         self.faiss_index_path = faiss_index_path
         self.embeddings = bedrock_embeddings
         self.vectorstore = None
-        self.llm = BedrockLLM(
-            model_id="900858-anthropic-claude-instant-v1",
-            model_arn="arn:aws:bedrock:us-east-1:942268715197:application-inference-profile/4e1x5fvs8bmn",
-            model_kwargs={
-                "max_tokens_to_sample": 2000,
-                "temperature": 0.0
-            }
-        )
 
         self.load_csv_documents()
         self.load_pdf_documents()
@@ -155,7 +147,7 @@ class TextToSQL:
         
         # Call Claude 3.5 Sonnet model
         response = self.client.invoke_model(
-            modelId="anthropic.claude-3-5-sonnet-20240620-v1:0", 
+            modelId=os.getenv("MODEL_ID"), 
             body=input_text
         )
 
