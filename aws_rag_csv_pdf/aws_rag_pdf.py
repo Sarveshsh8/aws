@@ -116,7 +116,7 @@ class TextToSQL:
             filename (str): Output PNG file name.
             inner_radius (int): Set to 0 for full pie, default 50 for donut chart.
         """
-        df = pd.DataFrame(data["data"]["values"])  # Directly use data
+        df = pd.DataFrame(data["Visualization"]["data"]["values"])  # Directly use data
 
         chart = alt.Chart(df).mark_arc(innerRadius=inner_radius).encode(
             theta=alt.Theta("count:Q"),
