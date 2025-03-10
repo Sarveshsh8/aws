@@ -45,6 +45,7 @@ async def handle_message(message: cl.Message):
     out = json.loads(response)
     Answer = out.get('Answer', 'No answer provided')  # Fetch the answer safely
     SQL = out.get('SQL Query', None)  # Fetch the SQL query safely
+    ans = out.get('SQL Query Answe',None)
 
 
     # Send the answer separately
@@ -56,6 +57,12 @@ async def handle_message(message: cl.Message):
     # Send the SQL query separately
     await cl.Message(
         content=f"```sql\n{SQL if SQL else 'No SQL Query'}\n```",
+        author="SQL Generator"
+    ).send()
+
+    #SQL ANSWER
+    await cl.Message(
+        content=f"**Output:** {ans}",
         author="SQL Generator"
     ).send()
 
