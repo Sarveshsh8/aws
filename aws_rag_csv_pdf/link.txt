@@ -1,1 +1,5 @@
 https://aws.amazon.com/bedrock/pricing/
+
+
+
+!pip install --upgrade vl-convert-python
