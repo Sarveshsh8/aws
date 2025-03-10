@@ -9,6 +9,9 @@ from langchain_community.document_loaders.csv_loader import CSVLoader
 import json
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.document_loaders import PyMuPDFLoader, CSVLoader
+import altair as alt
+import pandas as pd
+import vl_convert
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -102,6 +105,30 @@ class TextToSQL:
 
         return pdf_content, csv_content
     
+    
+
+    def save_pie_chart(self,data, filename="dynamic_pie_chart.png", inner_radius=50):
+        """
+        Generates a pie chart and saves it as PNG.
+
+        Parameters:
+            data (list of dict): Data format [{"category": value, "count": value}]
+            filename (str): Output PNG file name.
+            inner_radius (int): Set to 0 for full pie, default 50 for donut chart.
+        """
+        df = pd.DataFrame(data["data"]["values"])  # Directly use data
+
+        chart = alt.Chart(df).mark_arc(innerRadius=inner_radius).encode(
+            theta=alt.Theta("count:Q"),
+            color=alt.Color(df.columns[0] + ":N")  # Auto-detect category
+        )
+
+        png_bytes = vl_convert.vegalite_to_png(chart.to_json())
+        with open(filename, "wb") as f:
+            f.write(png_bytes)
+
+        print(f"Pie chart saved as '{filename}'")
+    
     def generate_sql_query(self, query: str):
         """Generates an SQL query based on the retrieved context and user query."""
         pdf_context, csv_context = self.retrieve_context(query)
@@ -145,7 +172,8 @@ class TextToSQL:
             "messages": [
                 {
                     "role": "user",
-                    "content": f"""**Instructions:**
+                    "content": f"""Explanation:\n{pdf_context}\n\nData Structure:\n{csv_context}\n\nQuestion: {query}\n\n**Instructions:**
+
             Format your response ONLY as a valid JSON object with these fields:
             - Answer: Your explanation based on the PDF context
             - SQL Query: The SQL query to retrieve the requested data, or null if no query is needed
@@ -178,6 +206,8 @@ class TextToSQL:
         # Parse the response
         response_body = json.loads(response['body'].read().decode("utf-8"))
         sql_query = response_body['content'][0]['text']
+        out = json.loads(sql_query)
+        self.save_pie_chart(out)
         
         return sql_query
 

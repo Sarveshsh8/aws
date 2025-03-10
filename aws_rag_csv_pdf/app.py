@@ -46,6 +46,7 @@ async def handle_message(message: cl.Message):
     Answer = out.get('Answer', 'No answer provided')  # Fetch the answer safely
     SQL = out.get('SQL Query', None)  # Fetch the SQL query safely
 
+
     # Send the answer separately
     await cl.Message(
         content=f"**Answer:** {Answer}",
@@ -56,6 +57,12 @@ async def handle_message(message: cl.Message):
     await cl.Message(
         content=f"```sql\n{SQL if SQL else 'No SQL Query'}\n```",
         author="SQL Generator"
+    ).send()
+
+    # ✅ **Display the already saved Pie Chart Image**
+    await cl.Message(
+        content="📊 **Generated Pie Chart:**",
+        elements=[cl.Image(path="dynamic_pie_chart.png")]
     ).send()
 
 if __name__ == "__main__":
