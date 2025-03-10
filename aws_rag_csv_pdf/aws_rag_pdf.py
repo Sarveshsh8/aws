@@ -207,8 +207,10 @@ class TextToSQL:
         response_body = json.loads(response['body'].read().decode("utf-8"))
         sql_query = response_body['content'][0]['text']
         out = json.loads(sql_query)
-        self.save_pie_chart(out)
-        
+        try:
+            self.save_pie_chart(out)
+        except:
+            pass
         return sql_query
 
 

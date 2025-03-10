@@ -60,10 +60,15 @@ async def handle_message(message: cl.Message):
     ).send()
 
     # ✅ **Display the already saved Pie Chart Image**
-    await cl.Message(
-        content="📊 **Generated Pie Chart:**",
-        elements=[cl.Image(path="dynamic_pie_chart.png")]
-    ).send()
+    file_path = "dynamic_pie_chart.png"
+
+    if os.path.exists(file_path):
+        await cl.Message(
+            content="📊 **Generated Pie Chart:**",
+            elements=[cl.Image(path=file_path)]
+        ).send()
+    else:
+        print("Pie chart not found, skipping image display.")
 
 if __name__ == "__main__":
     cl.run()
