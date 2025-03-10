@@ -105,31 +105,62 @@ class TextToSQL:
     def generate_sql_query(self, query: str):
         """Generates an SQL query based on the retrieved context and user query."""
         pdf_context, csv_context = self.retrieve_context(query)
+        json_output ={
+            "Answer": "To analyze the gender distribution across the data, we can generate a count of students by gender and visualize it in a bar chart.",
+            "SQL Query": "SELECT gender, COUNT(*) as count FROM students GROUP BY gender",
+            "SQL Query Answer": "male, 8\nfemale, 4",
+            "Visualization": {
+                "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+                "description": "Gender Distribution",
+                "data": {
+                "values": [
+                    {"gender": "male", "count": 8},
+                    {"gender": "female", "count": 4}
+                ]
+                },
+                "mark": "bar",
+                "encoding": {
+                "x": {"field": "gender", "type": "nominal"},
+                "y": {"field": "count", "type": "quantitative"},
+                "color": {"field": "gender", "type": "nominal"}
+        }
+        }
+        }       # Convert json_output to a JSON string
+        json_output_str = json.dumps(json_output, indent=2)
+        json_output_str = json_output_str.replace("{", "{{").replace("}", "}}")
 
         # Create the prompt for Claude 3.5 Sonnet
         prompt = {
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": 2048,
             "system": """You are an expert AI assistant for Text-to-SQL conversion.
-                **Task:**
-                - First, analyze the PDF explanation and CSV data structure to understand the context
-                - Based on the user's question:
-                * If it requires data retrieval, provide a brief answer based on the PDF context AND generate a SQL query
-                * If it doesn't require SQL querying, provide an explanation only and set SQL query to null""",
+
+            **Task:**
+            - Analyze the provided PDF for context and the CSV data structure to understand the schema and answer the user's question:
+            1. If it requires data retrieval, generate a SQL query and summarize the answer using the PDF context.
+            2. If it doesn't require SQL querying, provide only an explanation and set the SQL query to null.
+            3. If the question involves time-based data or any data that would benefit from visualization (especially date ranges, timestamps, or categorical distributions), also generate a Vega-Lite specification.""",
+            
+            
             "messages": [
                 {
                     "role": "user",
-                    "content": f"""Explanation:\n{pdf_context}\n\nData Structure:\n{csv_context}\n\nQuestion: {query}\n\n**Instructions:**
-                    **Instructions:**
-                    Please format your response as a valid JSON with two fields:
-                    - Answer: Your explanation based on the PDF context
-                    - SQL Query: The SQL query to retrieve the requested data, or null if no query is needed
+                    "content": f"""**Instructions:**
+            Format your response ONLY as a valid JSON object with these fields:
+            - Answer: Your explanation based on the PDF context
+            - SQL Query: The SQL query to retrieve the requested data, or null if no query is needed
+            - SQL Query Answer: The result of the SQL query in a simple format
+            - Visualization: When appropriate, include a Vega-Lite JSON specification for visualization
 
-                    Example format:
-                    {{{{
-                    "Answer": "Your explanation here based on the PDF context",
-                    "SQL Query": "SELECT * FROM table WHERE condition" 
-                    }}}}"""
+            For Vega-Lite visualizations:
+            - Use appropriate chart types based on the data (bar charts for categorical data, line charts for time series, etc.)
+            - Keep the specification clean and minimal
+            - For categorical distributions, use bar charts or pie charts as appropriate
+            - IMPORTANT: Do not add any text before or after the JSON object. Your entire response should be only the JSON object itself.
+
+            Example of exactly how your response should look:
+            {json_output_str}"""
+            
                 }
             ],
             "temperature": 0.0
