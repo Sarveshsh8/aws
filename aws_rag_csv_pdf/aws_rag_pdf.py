@@ -212,20 +212,50 @@ class TextToSQL:
         input_text = json.dumps(prompt)
         
         # Call Claude 3.5 Sonnet model
-        response = self.client.invoke_model(
-            modelId=os.getenv("MODEL_ID"), 
+        # response = self.client.invoke_model(
+        #     modelId=os.getenv("MODEL_ID"), 
+        #     body=input_text
+        # )
+
+        # # Parse the response
+        # response_body = json.loads(response['body'].read().decode("utf-8"))
+        # sql_query = response_body['content'][0]['text']
+        # out = json.loads(sql_query)
+        # try:
+        #     self.save_pie_chart(out)
+        # except:
+        #     pass
+
+        # Call Claude 3.5 Sonnet model with streaming
+        response_stream = self.client.invoke_model_with_response_stream(
+            modelId=os.getenv("MODEL_ID"),
             body=input_text
         )
-
-        # Parse the response
-        response_body = json.loads(response['body'].read().decode("utf-8"))
-        sql_query = response_body['content'][0]['text']
-        out = json.loads(sql_query)
+        
+        # Process the streaming response
+        complete_response = ""
+        for event in response_stream["body"]:
+            if "chunk" in event:
+                chunk_data = json.loads(event["chunk"]["bytes"].decode("utf-8"))
+                if "content" in chunk_data and len(chunk_data["content"]) > 0:
+                    text_chunk = chunk_data["content"][0].get("text", "")
+                    complete_response += text_chunk
+                    # Optional: Print chunk for debugging or progress indication
+                    # print(text_chunk, end="", flush=True)
+        
+        # Parse the completed response
         try:
-            self.save_pie_chart(out)
-        except:
-            pass
-        return sql_query
+            out = json.loads(complete_response)
+            try:
+                self.save_pie_chart(out)
+            except:
+                pass
+            return out
+        except json.JSONDecodeError:
+            # Handle case where response is not valid JSON
+            print("Error: Could not parse response as JSON")
+            return {"error": "Failed to parse response", "raw_response": complete_response}
+        # return sql_query
 
 
 if __name__ == "__main__":
