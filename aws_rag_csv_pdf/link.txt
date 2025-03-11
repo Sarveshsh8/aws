@@ -26,3 +26,9 @@ import os
 print(os.getcwd()) 
 
 from langchain_core.documents import Document
+
+
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
