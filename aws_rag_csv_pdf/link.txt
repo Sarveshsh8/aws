@@ -77,3 +77,12 @@ with open("output.json", "w") as f:
     json.dump(sql_query, f, indent=4)
 
 print("JSON file saved successfully!")
+
+
+
+import json
+
+with open("output.json", "r") as f:
+    data = json.load(f)
+
+print("JSON data:", data)
