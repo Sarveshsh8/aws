@@ -3,14 +3,13 @@ import chainlit as cl
 from aws_rag_pdf import TextToSQL
 import json
 
-# Global variables to store uploaded file paths
+# Global variables to store uploaded file path
 csv_path = None
-pdf_path = None
 text2sql = None
 
 @cl.on_message
 async def handle_message(message: cl.Message):
-    global csv_path, pdf_path, text2sql
+    global csv_path, text2sql
 
     # Check if files are uploaded
     if message.elements:
@@ -19,24 +18,20 @@ async def handle_message(message: cl.Message):
             
             if file_path.endswith(".csv"):
                 csv_path = file_path
-            elif file_path.endswith(".pdf"):
-                pdf_path = file_path
+                text2sql = TextToSQL(csv_path, None, "faiss_index")  # Pass None for pdf_path
+                await cl.Message("✅ CSV uploaded successfully! Now ask your question.").send()
+                return
 
-        if csv_path and pdf_path:
-            text2sql = TextToSQL(csv_path, pdf_path, "faiss_index")
-            await cl.Message("✅ CSV and PDF uploaded successfully! Now ask your question.").send()
-        elif csv_path:
-            await cl.Message("✅ CSV uploaded! Now upload a PDF.").send()
-        elif pdf_path:
-            await cl.Message("✅ PDF uploaded! Now upload a CSV.").send()
+        # If we get here, no CSV was found in the uploads
+        await cl.Message("⚠️ Please upload a CSV file.").send()
         return
 
-    # Ensure both CSV and PDF are uploaded before processing queries
-    if not csv_path or not pdf_path:
-        await cl.Message("⚠️ Please upload both a CSV and a PDF first.").send()
+    # Ensure CSV is uploaded before processing queries
+    if not csv_path:
+        await cl.Message("⚠️ Please upload a CSV file first.").send()
         return
 
-    # Process user query after both files are uploaded
+    # Process user query after CSV is uploaded
     user_query = message.content.strip()
     
     # Create message placeholders for streaming updates
