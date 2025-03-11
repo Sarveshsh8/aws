@@ -89,7 +89,7 @@ class TextToSQL:
             
             self.docs.extend(split_docs)
 
-    def create_vectorstore(self):
+    def create_vectorstores(self):
         """Creates and saves the FAISS vector store."""
         try:
             sample_text = self.docs[0].page_content
@@ -104,6 +104,45 @@ class TextToSQL:
 
         self.vectorstore = FAISS.from_documents(self.docs, self.embeddings)
         self.vectorstore.save_local(self.faiss_index_path)
+
+
+    def create_vectorstore(self):
+        """Loads an existing FAISS index if available; otherwise, creates and saves a new one."""
+        try:
+            # Check if FAISS index exists
+            if os.path.exists(self.faiss_index_path):
+                logger.info(f"FAISS index found at {self.faiss_index_path}, loading it...")
+                self.vectorstore = FAISS.load_local(
+                    self.faiss_index_path, self.embeddings, allow_dangerous_deserialization=True
+                )
+                logger.info("FAISS index loaded successfully.")
+                return  # Correctly returning after loading
+
+            if not self.docs:
+                logger.error("Document list is empty. Cannot create vector store.")
+                raise ValueError("Document list is empty.")
+
+            sample_text = self.docs[0].page_content
+            sample_embedding = self.generate_embedding(sample_text)
+
+            if not sample_embedding or len(sample_embedding) == 0:
+                logger.error("Embeddings are not generated correctly.")
+                raise ValueError("Embeddings are not generated correctly.")
+
+            if not hasattr(self, 'embeddings') or self.embeddings is None:
+                logger.error("Embeddings function is not defined.")
+                raise ValueError("Embeddings function is not defined.")
+
+            # Create and save FAISS vector store
+            logger.info("No existing FAISS index found. Creating a new one...")
+            self.vectorstore = FAISS.from_documents(self.docs, self.embeddings)
+            self.vectorstore.save_local(self.faiss_index_path)
+            logger.info(f"FAISS vector store successfully saved at {self.faiss_index_path}")
+
+        except Exception as e:
+            logger.error(f"Error while handling FAISS index: {e}")
+            raise
+
 
     def generate_embedding(self, text):
         """Generates embeddings for the given text."""
