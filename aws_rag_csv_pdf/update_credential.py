@@ -59,3 +59,6 @@ if __name__ == "__main__":
         credentials = assume_role(role_info["role_arn"], role_info["session_name"])
         if credentials:
             update_aws_credentials(profile, credentials)
+
+
+
