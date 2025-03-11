@@ -13,12 +13,9 @@ documents = "\n".join(df.astype(str).apply(lambda x: " ".join(x), axis=1))
 
 df = pd.read_csv(self.csv_path, delimiter=",", quotechar='"')
     
-# Create Document objects from DataFrame rows
+# Create Document objects using all columns
 documents = []
-
-# Option 1: If you want to use a specific column as content
-# Replace 'text_column' with your actual column name containing the text
 for i, row in df.iterrows():
-    content = str(row['text_column'])  # Replace with your column name
+    content = " ".join(str(row[col]) for col in df.columns if pd.notna(row[col]))  # Concatenate all columns, avoiding NaN
     metadata = {'source': self.csv_path, 'row': i}
     documents.append(Document(page_content=content, metadata=metadata))
