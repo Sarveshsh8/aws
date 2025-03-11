@@ -13,6 +13,10 @@ import altair as alt
 import pandas as pd
 import vl_convert
 from langchain_core.documents import Document
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 
 # Configure logging
