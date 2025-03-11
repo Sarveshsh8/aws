@@ -24,3 +24,5 @@ for i, row in df.iterrows():
 
 import os
 print(os.getcwd()) 
+
+from langchain_core.documents import Document
