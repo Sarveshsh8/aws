@@ -212,20 +212,91 @@ class TextToSQL:
         input_text = json.dumps(prompt)
         
         # Call Claude 3.5 Sonnet model
-        # response = self.client.invoke_model(
-        #     modelId=os.getenv("MODEL_ID"), 
-        #     body=input_text
-        # )
+        response = self.client.invoke_model(
+            modelId=os.getenv("MODEL_ID"), 
+            body=input_text
+        )
 
-        # # Parse the response
-        # response_body = json.loads(response['body'].read().decode("utf-8"))
-        # sql_query = response_body['content'][0]['text']
-        # out = json.loads(sql_query)
-        # try:
-        #     self.save_pie_chart(out)
-        # except:
-        #     pass
+        # Parse the response
+        response_body = json.loads(response['body'].read().decode("utf-8"))
+        sql_query = response_body['content'][0]['text']
+        out = json.loads(sql_query)
+        try:
+            self.save_pie_chart(out)
+        except:
+            pass
 
+       
+        return sql_query
+    
+    def generate_sql_query_with_stream(self, query: str):
+        """Generates an SQL query based on the retrieved context and user query with streaming."""
+        pdf_context, csv_context = self.retrieve_context(query)
+        json_output = {
+            "Answer": "To analyze the gender distribution across the data, we can generate a count of students by gender and visualize it in a bar chart.",
+            "SQL Query": "SELECT gender, COUNT(*) as count FROM students GROUP BY gender",
+            "SQL Query Answer": "male, 8\nfemale, 4",
+            "Visualization": {
+                "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+                "description": "Gender Distribution",
+                "data": {
+                "values": [
+                    {"gender": "male", "count": 8},
+                    {"gender": "female", "count": 4}
+                ]
+                },
+                "mark": "bar",
+                "encoding": {
+                "x": {"field": "gender", "type": "nominal"},
+                "y": {"field": "count", "type": "quantitative"},
+                "color": {"field": "gender", "type": "nominal"}
+                }
+            }
+        }
+        
+        # Convert json_output to a JSON string
+        json_output_str = json.dumps(json_output, indent=2)
+        json_output_str = json_output_str.replace("{", "{{").replace("}", "}}")
+
+        # Create the prompt for Claude 3.5 Sonnet
+        prompt = {
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": 2048,
+            "system": """You are an expert AI assistant for Text-to-SQL conversion.
+
+            **Task:**
+            - Analyze the provided PDF for context and the CSV data structure to understand the schema and answer the user's question:
+            1. If it requires data retrieval, generate a SQL query and summarize the answer using the PDF context.
+            2. If it doesn't require SQL querying, provide only an explanation and set the SQL query to null.
+            3. If the question involves time-based data or any data that would benefit from visualization (especially date ranges, timestamps, or categorical distributions), also generate a Vega-Lite specification.""",
+            
+            "messages": [
+                {
+                    "role": "user",
+                    "content": f"""Explanation:\n{pdf_context}\n\nData Structure:\n{csv_context}\n\nQuestion: {query}\n\n**Instructions:**
+
+            Format your response ONLY as a valid JSON object with these fields:
+            - Answer: Your explanation based on the PDF context
+            - SQL Query: The SQL query to retrieve the requested data, or null if no query is needed
+            - SQL Query Answer: The result of the SQL query in a simple format
+            - Visualization: When appropriate, include a Vega-Lite JSON specification for visualization
+
+            For Vega-Lite visualizations:
+            - Use appropriate chart types based on the data (bar charts for categorical data, line charts for time series, etc.)
+            - Keep the specification clean and minimal
+            - For categorical distributions, use bar charts or pie charts as appropriate
+            - IMPORTANT: Do not add any text before or after the JSON object. Your entire response should be only the JSON object itself.
+
+            Example of exactly how your response should look:
+            {json_output_str}"""
+                }
+            ],
+            "temperature": 0.0
+        }
+
+        # Convert prompt to JSON string
+        input_text = json.dumps(prompt)
+        
         # Call Claude 3.5 Sonnet model with streaming
         response_stream = self.client.invoke_model_with_response_stream(
             modelId=os.getenv("MODEL_ID"),
@@ -234,28 +305,27 @@ class TextToSQL:
         
         # Process the streaming response
         complete_response = ""
+        
         for event in response_stream["body"]:
             if "chunk" in event:
                 chunk_data = json.loads(event["chunk"]["bytes"].decode("utf-8"))
                 if "content" in chunk_data and len(chunk_data["content"]) > 0:
                     text_chunk = chunk_data["content"][0].get("text", "")
                     complete_response += text_chunk
-                    # Optional: Print chunk for debugging or progress indication
-                    # print(text_chunk, end="", flush=True)
+                    # We yield each chunk as it arrives
+                    yield text_chunk, complete_response
         
-        # Parse the completed response
+        # Try to parse the final response and save pie chart
         try:
-            out = json.loads(complete_response)
+            final_out = json.loads(complete_response)
             try:
-                self.save_pie_chart(out)
+                self.save_pie_chart(final_out)
             except:
                 pass
-            return out
         except json.JSONDecodeError:
-            # Handle case where response is not valid JSON
-            print("Error: Could not parse response as JSON")
-            return {"error": "Failed to parse response", "raw_response": complete_response}
-        # return sql_query
+            pass
+    
+
 
 
 if __name__ == "__main__":
