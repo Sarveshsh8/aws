@@ -19,3 +19,8 @@ for i, row in df.iterrows():
     content = " ".join(str(row[col]) for col in df.columns if pd.notna(row[col]))  # Concatenate all columns, avoiding NaN
     metadata = {'source': self.csv_path, 'row': i}
     documents.append(Document(page_content=content, metadata=metadata))
+
+
+
+import os
+print(os.getcwd()) 
