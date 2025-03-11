@@ -3,3 +3,6 @@ https://aws.amazon.com/bedrock/pricing/
 
 
 !pip install --upgrade vl-convert-python
+
+
+documents = "\n".join(df.astype(str).apply(lambda x: " ".join(x), axis=1))
