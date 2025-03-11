@@ -12,6 +12,8 @@ from langchain_community.document_loaders import PyMuPDFLoader, CSVLoader
 import altair as alt
 import pandas as pd
 import vl_convert
+from langchain_core.documents import Document
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -48,8 +50,20 @@ class TextToSQL:
     def load_csv_documents(self):
         """Loads CSV data and adds metadata."""
         if self.csv_path:
-            loader = CSVLoader(file_path=self.csv_path, csv_args={"delimiter": ",", "quotechar": '"'})
-            documents = loader.load()
+            # loader = CSVLoader(file_path=self.csv_path, csv_args={"delimiter": ",", "quotechar": '"'})
+            # documents = loader.load()
+            df = pd.read_csv(self.csv_path, delimiter=",", quotechar='"')
+    
+            # Create Document objects from DataFrame rows
+            documents = []
+            
+            # Option 1: If you want to use a specific column as content
+            # Replace 'text_column' with your actual column name containing the text
+            for i, row in df.iterrows():
+                content = str(row['text_column'])  # Replace with your column name
+                metadata = {'source': self.csv_path, 'row': i}
+                documents.append(Document(page_content=content, metadata=metadata))
+            
             text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=30)
             split_docs = text_splitter.split_documents(documents)
             
