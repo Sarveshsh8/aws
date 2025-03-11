@@ -71,3 +71,9 @@ def create_vectorstore(self):
         except Exception as e:
             logger.error(f"Error while handling FAISS index: {e}")
             raise
+
+
+with open("output.json", "w") as f:
+    json.dump(sql_query, f, indent=4)
+
+print("JSON file saved successfully!")
