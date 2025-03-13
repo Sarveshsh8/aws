@@ -86,3 +86,49 @@ with open("output.json", "r") as f:
     data = json.load(f)
 
 print("JSON data:", data)
+
+
+
+
+class TextToSQL:
+    def __init__(self, csv_path: str, pdf_path: str, faiss_index_path: str, force_new_index: bool = False)
+
+
+def create_vectorstore(self):
+        """Creates a new FAISS index or loads an existing one based on configuration."""
+        try:
+            # Check if we should create a new index or if one doesn't exist
+            if self.force_new_index or not os.path.exists(self.faiss_index_path):
+                logger.info("Creating a new FAISS index...")
+                
+                # Validate that we have documents to index
+                if not self.docs:
+                    logger.error("Document list is empty. Cannot create vector store.")
+                    raise ValueError("Document list is empty.")
+                
+                # Test embedding generation
+                sample_text = self.docs[0].page_content
+                sample_embedding = self.generate_embedding(sample_text)
+                
+                if not sample_embedding or len(sample_embedding) == 0:
+                    logger.error("Embeddings are not generated correctly.")
+                    raise ValueError("Embeddings are not generated correctly.")
+                
+                # Create the vector store from documents
+                self.vectorstore = FAISS.from_documents(self.docs, self.embeddings)
+                
+                # Save the index
+                self.vectorstore.save_local(self.faiss_index_path)
+                logger.info(f"FAISS vector store successfully created and saved at {self.faiss_index_path}")
+            else:
+                # Load existing index
+                logger.info(f"Loading existing FAISS index from {self.faiss_index_path}")
+                self.vectorstore = FAISS.load_local(
+                    self.faiss_index_path, self.embeddings, allow_dangerous_deserialization=True
+                )
+                logger.info("FAISS index loaded successfully.")
+        
+        except Exception as e:
+            logger.error(f"Error while handling FAISS index: {e}")
+            raise
+
