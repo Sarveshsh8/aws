@@ -259,3 +259,134 @@ async def handle_message(message: cl.Message):
         sql_ans_msg.content = "**Output:** Error in processing"
         await sql_ans_msg.update()
 
+
+
+
+
+
+
+def generate_sql_query_with_stream(self, query: str):
+    """Generates an SQL query based on the retrieved context and user query with streaming."""
+    pdf_context, csv_context = self.retrieve_context(query)
+    json_output = {
+        "Answer": "To analyze the gender distribution across the data, we can generate a count of students by gender and visualize it in a bar chart.",
+        "SQL Query": "SELECT gender, COUNT(*) as count FROM students GROUP BY gender",
+        "SQL Query Answer": "male, 8\nfemale, 4",
+        "Visualization": {
+            "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+            "description": "Gender Distribution",
+            "data": {
+            "values": [
+                {"gender": "male", "count": 8},
+                {"gender": "female", "count": 4}
+            ]
+            },
+            "mark": "bar",
+            "encoding": {
+            "x": {"field": "gender", "type": "nominal"},
+            "y": {"field": "count", "type": "quantitative"},
+            "color": {"field": "gender", "type": "nominal"}
+            }
+        }
+    }
+    
+    # Convert json_output to a JSON string
+    json_output_str = json.dumps(json_output, indent=2)
+    json_output_str = json_output_str.replace("{", "{{").replace("}", "}}")
+
+    # Create the prompt for Claude 3.5 Sonnet
+    prompt = {
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": 2048,
+        "system": """You are an expert AI assistant for Text-to-SQL conversion.
+
+        **Task:**
+        - Analyze the provided PDF for context and the CSV data structure to understand the schema and answer the user's question:
+        1. If it requires data retrieval, generate a SQL query and summarize the answer using the PDF context.
+        2. If it doesn't require SQL querying, provide only an explanation and set the SQL query to null.
+        3. If the question involves time-based data or any data that would benefit from visualization (especially date ranges, timestamps, or categorical distributions), also generate a Vega-Lite specification.""",
+        
+        "messages": [
+            {
+                "role": "user",
+                "content": f"""Explanation:\n{pdf_context}\n\nData Structure:\n{csv_context}\n\nQuestion: {query}\n\n**Instructions:**
+
+        Format your response ONLY as a valid JSON object with these fields:
+        - Answer: Your explanation based on the PDF context
+        - SQL Query: The SQL query to retrieve the requested data, or null if no query is needed
+        - SQL Query Answer: The result of the SQL query in a simple format
+        - Visualization: When appropriate, include a Vega-Lite JSON specification for visualization
+
+        For Vega-Lite visualizations:
+        - Use appropriate chart types based on the data (bar charts for categorical data, line charts for time series, etc.)
+        - Keep the specification clean and minimal
+        - For categorical distributions, use bar charts or pie charts as appropriate
+        - IMPORTANT: Do not add any text before or after the JSON object. Your entire response should be only the JSON object itself.
+
+        Example of exactly how your response should look:
+        {json_output_str}"""
+            }
+        ],
+        "temperature": 0.0
+    }
+
+    # Convert prompt to JSON string
+    input_text = json.dumps(prompt)
+    
+    # Call Claude 3.5 Sonnet model with streaming
+    response_stream = self.client.invoke_model_with_response_stream(
+        modelId=os.getenv("MODEL_ID"),
+        body=input_text
+    )
+    
+    # Process the streaming response
+    complete_response = ""
+    
+    for event in response_stream["body"]:
+        if "chunk" in event:
+            chunk_data = json.loads(event["chunk"]["bytes"].decode("utf-8"))
+            if "content" in chunk_data and len(chunk_data["content"]) > 0:
+                text_chunk = chunk_data["content"][0].get("text", "")
+                complete_response += text_chunk
+                
+                # Try to create a valid partial JSON object for each chunk
+                # This is the key change
+                try:
+                    # First, check if we have a complete JSON object
+                    if complete_response.strip().startswith('{') and complete_response.strip().endswith('}'):
+                        parsed_json = json.loads(complete_response)
+                        
+                        # Create a partial JSON with available fields
+                        partial_json = {}
+                        if "Answer" in parsed_json:
+                            partial_json["Answer"] = parsed_json["Answer"]
+                        if "SQL Query" in parsed_json:
+                            partial_json["SQL Query"] = parsed_json["SQL Query"]
+                        if "SQL Query Answer" in parsed_json:
+                            partial_json["SQL Query Answer"] = parsed_json["SQL Query Answer"]
+                            
+                        # Convert to JSON string
+                        partial_json_str = json.dumps(partial_json)
+                        yield text_chunk, partial_json_str
+                    else:
+                        # If not a complete JSON, don't try to parse it yet
+                        yield text_chunk, "{}"
+                except json.JSONDecodeError:
+                    # If parsing fails, just return an empty object
+                    yield text_chunk, "{}"
+    
+    # Try to parse the final response and save pie chart
+    try:
+        final_out = json.loads(complete_response)
+        final_json_str = json.dumps(final_out)
+        try:
+            self.save_pie_chart(final_out)
+        except Exception as e:
+            print(f"Error saving pie chart: {e}")
+        
+        # Return the final complete response
+        yield "", final_json_str
+    except json.JSONDecodeError as e:
+        print(f"Error parsing final JSON: {e}")
+        yield "", "{}"
+
