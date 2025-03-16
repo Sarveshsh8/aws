@@ -139,3 +139,123 @@ def create_vectorstore(self):
         logger.error(f"Error while handling FAISS index: {e}")
         raise
 
+
+
+
+
+@cl.on_message
+async def handle_message(message: cl.Message):
+    global csv_path, text2sql
+
+    # Check if files are uploaded
+    if message.elements:
+        for uploaded_file in message.elements:
+            file_path = uploaded_file.path  
+            
+            if file_path.endswith(".csv"):
+                csv_path = file_path
+                text2sql = TextToSQL(csv_path, None, "faiss_index")  # Pass None for pdf_path
+                await cl.Message("✅ CSV uploaded successfully! Now ask your question.").send()
+                return
+
+        # If we get here, no CSV was found in the uploads
+        await cl.Message("⚠️ Please upload a CSV file.").send()
+        return
+
+    # Ensure CSV is uploaded before processing queries
+    if not csv_path:
+        await cl.Message("⚠️ Please upload a CSV file first.").send()
+        return
+
+    # Process user query after CSV is uploaded
+    user_query = message.content.strip()
+    
+    # Create message placeholders for streaming updates
+    answer_msg = cl.Message(content="**Answer:** Processing...", author="SQL Generator")
+    await answer_msg.send()
+    
+    sql_msg = cl.Message(content="```sql\nAnalyzing data...\n```", author="SQL Generator")
+    await sql_msg.send()
+    
+    sql_ans_msg = cl.Message(content="**Output:** Waiting for results...", author="SQL Generator")
+    await sql_ans_msg.send()
+    
+    # Start the stream
+    full_response = ""
+    current_json = {}
+    
+    # Get the streaming generator
+    response_generator = text2sql.generate_sql_query_with_stream(user_query)
+    
+    # Process each chunk - CHANGED FROM async for TO regular for loop
+    for chunk, complete_response in response_generator:
+        full_response = complete_response
+        
+        # Try to parse the current JSON (it might be incomplete)
+        try:
+            current_json = json.loads(full_response)
+            
+            # Update the message components as data comes in
+            if 'Answer' in current_json:
+                # Update the content attribute directly
+                answer_msg.content = f"**Answer:** {current_json['Answer']}"
+                await answer_msg.update()
+            
+            if 'SQL Query' in current_json:
+                sql_query = current_json['SQL Query']
+                if sql_query:
+                    sql_msg.content = f"```sql\n{sql_query}\n```"
+                else:
+                    sql_msg.content = "```\nNo SQL Query needed\n```"
+                await sql_msg.update()
+            
+            if 'SQL Query Answer' in current_json:
+                sql_answer = current_json['SQL Query Answer']
+                sql_ans_msg.content = f"**Output:** {sql_answer}"
+                await sql_ans_msg.update()
+                
+        except json.JSONDecodeError:
+            # This is expected during streaming as we might get partial JSON
+            pass
+    
+    # Final update with complete response
+    try:
+        final_json = json.loads(full_response)
+        
+        Answer = final_json.get('Answer', 'No answer provided')
+        SQL = final_json.get('SQL Query', None)
+        ans = final_json.get('SQL Query Answer', None)
+        
+        # Final updates to message components
+        answer_msg.content = f"**Answer:** {Answer}"
+        await answer_msg.update()
+        
+        if SQL:
+            sql_msg.content = f"```sql\n{SQL}\n```"
+        else:
+            sql_msg.content = "```\nNo SQL Query needed\n```"
+        await sql_msg.update()
+        
+        if ans:
+            sql_ans_msg.content = f"**Output:** {ans}"
+        else:
+            sql_ans_msg.content = "**Output:** No results"
+        await sql_ans_msg.update()
+        
+        # Display the saved pie chart if available
+        file_path = "dynamic_pie_chart.png"
+        if os.path.exists(file_path):
+            await cl.Message(
+                content="📊 **Generated Pie Chart:**",
+                elements=[cl.Image(path=file_path)]
+            ).send()
+    
+    except json.JSONDecodeError:
+        # Handle case where final response is not valid JSON
+        answer_msg.content = "**Answer:** Error: Could not parse response as JSON"
+        await answer_msg.update()
+        sql_msg.content = "```\nError in processing\n```"
+        await sql_msg.update()
+        sql_ans_msg.content = "**Output:** Error in processing"
+        await sql_ans_msg.update()
+
