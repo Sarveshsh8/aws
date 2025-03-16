@@ -390,3 +390,53 @@ def generate_sql_query_with_stream(self, query: str):
         print(f"Error parsing final JSON: {e}")
         yield "", "{}"
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Process each chunk
+async for chunk, json_str in response_generator:
+    try:
+        # Try to parse the JSON
+        if json_str and json_str != "{}":
+            current_json = json.loads(json_str)
+            
+            # Update the message components as data comes in
+            if 'Answer' in current_json:
+                await answer_msg.update(content=f"**Answer:** {current_json['Answer']}")
+            
+            if 'SQL Query' in current_json:
+                sql_query = current_json['SQL Query']
+                if sql_query:
+                    await sql_msg.update(content=f"```sql\n{sql_query}\n```")
+                else:
+                    await sql_msg.update(content="```\nNo SQL Query needed\n```")
+            
+            if 'SQL Query Answer' in current_json:
+                sql_answer = current_json['SQL Query Answer']
+                await sql_ans_msg.update(content=f"**Output:** {sql_answer}")
+    except json.JSONDecodeError:
+        # This is expected during streaming as we might get partial JSON
+        pass
