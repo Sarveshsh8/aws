@@ -45,7 +45,7 @@ async def handle_message(message: cl.Message):
     out = json.loads(response)
     Answer = out.get('Answer', 'No answer provided')  # Fetch the answer safely
     SQL = out.get('SQL Query', None)  # Fetch the SQL query safely
-    ans = out.get('SQL Query Answe',None)
+    ans = out.get('SQL Query Answer',None)
 
 
     # Send the answer separately
