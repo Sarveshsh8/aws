@@ -36,10 +36,7 @@ json_output = {
 
 ans = json_output.get('SQL Query Answer',None)
 
-df = pd.DataFrame({
-    "gender": ["male", "female"],
-    "count": [8, 4]
-})
+df = pd.DataFrame(ans)
 
 
 #
