@@ -42,6 +42,8 @@ df = pd.DataFrame(ans['data'], columns=ans['columns'])
 # df = pd.DataFrame(ans)
 
 
+#   await cl.Message(content=df.to_markdown()).send()
+
 #
 
 # await cl.Table(data=df.values.tolist(), column_names=df.columns.tolist()).send()
