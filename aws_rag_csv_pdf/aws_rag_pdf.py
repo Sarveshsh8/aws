@@ -15,6 +15,13 @@ import vl_convert
 from langchain_core.documents import Document
 from dotenv import load_dotenv
 
+from botocore.credentials import create_assume_role_refresher as carr
+from botocore.credentials import DeferredRefreshableCredentials as DRC
+from boto3.session import Session
+import os
+
+
+
 # Load environment variables
 load_dotenv()
 
@@ -38,10 +45,23 @@ bedrock_embeddings = BedrockEmbeddings(
 
 class TextToSQL:
     def __init__(self, csv_path: str, pdf_path: str, faiss_index_path: str):
+        access_key, secret_key, token = self.get_credentials()
+        # Use temporary credentials directly
+        self.assumed_role_session = boto3.Session(
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            aws_session_token=token,
+        )
+
+        self.bedrock_client = self.assumed_role_session.client("bedrock-runtime")
+        self.bedrock_embeddings = BedrockEmbeddings(
+            model_id=os.getenv("EMBED_MODEL_ID"),
+            client=self.bedrock_client
+        )
         self.csv_path = csv_path
         self.pdf_path = pdf_path
         self.faiss_index_path = faiss_index_path
-        self.embeddings = bedrock_embeddings
+        self.embeddings = self.bedrock_embeddings
         self.vectorstore = None
         self.docs = []
         self.load_csv_documents()
@@ -185,6 +205,33 @@ class TextToSQL:
             f.write(png_bytes)
 
         print(f"Pie chart saved as '{filename}'")
+
+    def get_credentials(self):
+        session = Session(region_name="us-east-1")
+
+
+        session._session._credentials = DRC(
+            refresh_using=carr(session.client("sts"),
+            {
+                "RoleArn": "arn:aws:iam::942286715197:role/app-bedrock-access-900858-us-east-1",
+                "RoleSessionName": "test"
+            }),
+            method="sts-assume-role"
+        )
+
+        credentials  = session.get_credentials().get_frozen_credentials()
+        access_key = credentials.access_key
+        secret_key = credentials.secret_key
+        token = credentials.token
+        
+
+        # Your AWS credentials
+        os.environ["AWS_ACCESS_KEY_ID"] = access_key
+        os.environ["AWS_SECRET_ACCESS_KEY"] = secret_key
+        os.environ["AWS_SESSION_TOKEN"] = token
+        os.environ["AWS_REGION"] = "us-east-1"
+
+        return access_key, secret_key, token
     
     def generate_sql_query(self, query: str):
         """Generates an SQL query based on the retrieved context and user query."""
