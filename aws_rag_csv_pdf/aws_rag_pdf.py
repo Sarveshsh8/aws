@@ -45,8 +45,10 @@ bedrock_embeddings = BedrockEmbeddings(
 
 class TextToSQL:
     def __init__(self, csv_path: str, pdf_path: str, faiss_index_path: str):
+        # Get temporary AWS credentials
         access_key, secret_key, token = self.get_credentials()
-        # Use temporary credentials directly
+
+        # Use assumed role credentials for Bedrock client
         self.assumed_role_session = boto3.Session(
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,
@@ -58,18 +60,55 @@ class TextToSQL:
             model_id=os.getenv("EMBED_MODEL_ID"),
             client=self.bedrock_client
         )
+
+        # Initialize paths
         self.csv_path = csv_path
         self.pdf_path = pdf_path
         self.faiss_index_path = faiss_index_path
         self.embeddings = self.bedrock_embeddings
         self.vectorstore = None
         self.docs = []
+
+        # Load documents and vector store
         self.load_csv_documents()
         self.load_pdf_documents()
         self.create_vectorstore()
         self.load_vectorstore()
-        self.session = boto3.Session(profile_name="test")
-        self.client = self.session.client("bedrock-runtime")
+
+
+    def get_credentials(self):
+        """Assume AWS role and return temporary credentials"""
+        session = Session(region_name="us-east-1")
+
+        session._session._credentials = DRC(
+            refresh_using=carr(
+                session.client("sts"),
+                {
+                    "RoleArn": "arn:aws:iam::942286715197:role/app-bedrock-access-900858-us-east-1",
+                    "RoleSessionName": "test"
+                }
+            ),
+            method="sts-assume-role"
+        )
+
+        credentials = session.get_credentials().get_frozen_credentials()
+        access_key = credentials.access_key
+        secret_key = credentials.secret_key
+        token = credentials.token
+
+        # Set environment variables explicitly
+        os.environ["AWS_ACCESS_KEY_ID"] = access_key
+        os.environ["AWS_SECRET_ACCESS_KEY"] = secret_key
+        os.environ["AWS_SESSION_TOKEN"] = token
+        os.environ["AWS_REGION"] = "us-east-1"
+
+        # Verify they are set
+        print("AWS_ACCESS_KEY_ID:", os.environ.get("AWS_ACCESS_KEY_ID"))
+        print("AWS_SECRET_ACCESS_KEY:", os.environ.get("AWS_SECRET_ACCESS_KEY"))
+        print("AWS_SESSION_TOKEN:", os.environ.get("AWS_SESSION_TOKEN"))
+        print("AWS_REGION:", os.environ.get("AWS_REGION"))
+
+        return access_key, secret_key, token
 
     def load_csv_documents(self):
         """Loads CSV data and adds metadata."""
