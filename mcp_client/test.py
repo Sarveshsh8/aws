@@ -12,7 +12,7 @@ st.title("🏠 Airbnb Booking Assistant")
 def get_agent():
     return Agent(
         instructions="""You help book apartments on Airbnb.""",
-        llm="gpt-4o-mini",
+        llm="gpt-4o-mini",  
         tools=MCP("npx -y @openbnb/mcp-server-airbnb --ignore-robots-txt")
     )
 
