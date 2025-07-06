@@ -1,0 +1,561 @@
+https://aws.amazon.com/bedrock/pricing/
+
+
+
+!pip install --upgrade vl-convert-python
+
+
+documents = "\n".join(df.astype(str).apply(lambda x: " ".join(x), axis=1))
+
+
+
+
+
+df = pd.read_csv(self.csv_path, delimiter=",", quotechar='"')
+    
+# Create Document objects using all columns
+documents = []
+for i, row in df.iterrows():
+    content = " ".join(str(row[col]) for col in df.columns if pd.notna(row[col]))  # Concatenate all columns, avoiding NaN
+    metadata = {'source': self.csv_path, 'row': i}
+    documents.append(Document(page_content=content, metadata=metadata))
+
+
+
+import os
+print(os.getcwd()) 
+
+from langchain_core.documents import Document
+
+
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+
+
+def create_vectorstore(self):
+        """Loads an existing FAISS index if available; otherwise, creates and saves a new one."""
+        try:
+            # Check if FAISS index exists
+            if os.path.exists(self.faiss_index_path):
+                logger.info(f"FAISS index found at {self.faiss_index_path}, loading it...")
+                self.vectorstore = FAISS.load_local(
+                    self.faiss_index_path, self.embeddings, allow_dangerous_deserialization=True
+                )
+                logger.info("FAISS index loaded successfully.")
+                return  # Correctly returning after loading
+
+            if not self.docs:
+                logger.error("Document list is empty. Cannot create vector store.")
+                raise ValueError("Document list is empty.")
+
+            sample_text = self.docs[0].page_content
+            sample_embedding = self.generate_embedding(sample_text)
+
+            if not sample_embedding or len(sample_embedding) == 0:
+                logger.error("Embeddings are not generated correctly.")
+                raise ValueError("Embeddings are not generated correctly.")
+
+            if not hasattr(self, 'embeddings') or self.embeddings is None:
+                logger.error("Embeddings function is not defined.")
+                raise ValueError("Embeddings function is not defined.")
+
+            # Create and save FAISS vector store
+            logger.info("No existing FAISS index found. Creating a new one...")
+            self.vectorstore = FAISS.from_documents(self.docs, self.embeddings)
+            self.vectorstore.save_local(self.faiss_index_path)
+            logger.info(f"FAISS vector store successfully saved at {self.faiss_index_path}")
+
+        except Exception as e:
+            logger.error(f"Error while handling FAISS index: {e}")
+            raise
+
+
+with open("output.json", "w") as f:
+    json.dump(sql_query, f, indent=4)
+
+print("JSON file saved successfully!")
+
+
+
+import json
+
+with open("output.json", "r") as f:
+    data = json.load(f)
+
+print("JSON data:", data)
+
+
+
+
+class TextToSQL:
+    def __init__(self, csv_path: str, pdf_path: str, faiss_index_path: str, force_new_index: bool = False)
+
+
+def create_vectorstore(self):
+    """Creates a new FAISS index or loads an existing one based on configuration."""
+    try:
+        # Check if we should create a new index or if one doesn't exist
+        if self.force_new_index or not os.path.exists(self.faiss_index_path):
+            logger.info("Creating a new FAISS index...")
+            
+            # Validate that we have documents to index
+            if not self.docs:
+                logger.warning("Document list is empty. Loading documents first...")
+                self.load_documents()  # Try to load documents if not already loaded
+                
+                # Check again after loading
+                if not self.docs:
+                    logger.error("Document list is still empty after loading. Cannot create vector store.")
+                    raise ValueError("Document list is empty. Please add documents before creating the vector store.")
+            
+            # Test embedding generation
+            sample_text = self.docs[0].page_content
+            sample_embedding = self.generate_embedding(sample_text)
+            
+            if not sample_embedding or len(sample_embedding) == 0:
+                logger.error("Embeddings are not generated correctly.")
+                raise ValueError("Embeddings are not generated correctly.")
+            
+            # Create the vector store from documents
+            self.vectorstore = FAISS.from_documents(self.docs, self.embeddings)
+            
+            # Save the index
+            self.vectorstore.save_local(self.faiss_index_path)
+            logger.info(f"FAISS vector store successfully created and saved at {self.faiss_index_path}")
+        else:
+            # Load existing index
+            logger.info(f"Loading existing FAISS index from {self.faiss_index_path}")
+            self.vectorstore = FAISS.load_local(
+                self.faiss_index_path, self.embeddings, allow_dangerous_deserialization=True
+            )
+            logger.info("FAISS index loaded successfully.")
+        
+        return self.vectorstore
+    
+    except Exception as e:
+        logger.error(f"Error while handling FAISS index: {e}")
+        raise
+
+
+
+
+
+@cl.on_message
+async def handle_message(message: cl.Message):
+    global csv_path, text2sql
+
+    # Check if files are uploaded
+    if message.elements:
+        for uploaded_file in message.elements:
+            file_path = uploaded_file.path  
+            
+            if file_path.endswith(".csv"):
+                csv_path = file_path
+                text2sql = TextToSQL(csv_path, None, "faiss_index")  # Pass None for pdf_path
+                await cl.Message("✅ CSV uploaded successfully! Now ask your question.").send()
+                return
+
+        # If we get here, no CSV was found in the uploads
+        await cl.Message("⚠️ Please upload a CSV file.").send()
+        return
+
+    # Ensure CSV is uploaded before processing queries
+    if not csv_path:
+        await cl.Message("⚠️ Please upload a CSV file first.").send()
+        return
+
+    # Process user query after CSV is uploaded
+    user_query = message.content.strip()
+    
+    # Create message placeholders for streaming updates
+    answer_msg = cl.Message(content="**Answer:** Processing...", author="SQL Generator")
+    await answer_msg.send()
+    
+    sql_msg = cl.Message(content="```sql\nAnalyzing data...\n```", author="SQL Generator")
+    await sql_msg.send()
+    
+    sql_ans_msg = cl.Message(content="**Output:** Waiting for results...", author="SQL Generator")
+    await sql_ans_msg.send()
+    
+    # Start the stream
+    full_response = ""
+    current_json = {}
+    
+    # Get the streaming generator
+    response_generator = text2sql.generate_sql_query_with_stream(user_query)
+    
+    # Process each chunk - CHANGED FROM async for TO regular for loop
+    for chunk, complete_response in response_generator:
+        full_response = complete_response
+        
+        # Try to parse the current JSON (it might be incomplete)
+        try:
+            current_json = json.loads(full_response)
+            
+            # Update the message components as data comes in
+            if 'Answer' in current_json:
+                # Update the content attribute directly
+                answer_msg.content = f"**Answer:** {current_json['Answer']}"
+                await answer_msg.update()
+            
+            if 'SQL Query' in current_json:
+                sql_query = current_json['SQL Query']
+                if sql_query:
+                    sql_msg.content = f"```sql\n{sql_query}\n```"
+                else:
+                    sql_msg.content = "```\nNo SQL Query needed\n```"
+                await sql_msg.update()
+            
+            if 'SQL Query Answer' in current_json:
+                sql_answer = current_json['SQL Query Answer']
+                sql_ans_msg.content = f"**Output:** {sql_answer}"
+                await sql_ans_msg.update()
+                
+        except json.JSONDecodeError:
+            # This is expected during streaming as we might get partial JSON
+            pass
+    
+    # Final update with complete response
+    try:
+        final_json = json.loads(full_response)
+        
+        Answer = final_json.get('Answer', 'No answer provided')
+        SQL = final_json.get('SQL Query', None)
+        ans = final_json.get('SQL Query Answer', None)
+        
+        # Final updates to message components
+        answer_msg.content = f"**Answer:** {Answer}"
+        await answer_msg.update()
+        
+        if SQL:
+            sql_msg.content = f"```sql\n{SQL}\n```"
+        else:
+            sql_msg.content = "```\nNo SQL Query needed\n```"
+        await sql_msg.update()
+        
+        if ans:
+            sql_ans_msg.content = f"**Output:** {ans}"
+        else:
+            sql_ans_msg.content = "**Output:** No results"
+        await sql_ans_msg.update()
+        
+        # Display the saved pie chart if available
+        file_path = "dynamic_pie_chart.png"
+        if os.path.exists(file_path):
+            await cl.Message(
+                content="📊 **Generated Pie Chart:**",
+                elements=[cl.Image(path=file_path)]
+            ).send()
+    
+    except json.JSONDecodeError:
+        # Handle case where final response is not valid JSON
+        answer_msg.content = "**Answer:** Error: Could not parse response as JSON"
+        await answer_msg.update()
+        sql_msg.content = "```\nError in processing\n```"
+        await sql_msg.update()
+        sql_ans_msg.content = "**Output:** Error in processing"
+        await sql_ans_msg.update()
+
+
+
+
+
+
+
+def generate_sql_query_with_stream(self, query: str):
+    """Generates an SQL query based on the retrieved context and user query with streaming."""
+    pdf_context, csv_context = self.retrieve_context(query)
+    json_output = {
+        "Answer": "To analyze the gender distribution across the data, we can generate a count of students by gender and visualize it in a bar chart.",
+        "SQL Query": "SELECT gender, COUNT(*) as count FROM students GROUP BY gender",
+        "SQL Query Answer": "male, 8\nfemale, 4",
+        "Visualization": {
+            "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+            "description": "Gender Distribution",
+            "data": {
+            "values": [
+                {"gender": "male", "count": 8},
+                {"gender": "female", "count": 4}
+            ]
+            },
+            "mark": "bar",
+            "encoding": {
+            "x": {"field": "gender", "type": "nominal"},
+            "y": {"field": "count", "type": "quantitative"},
+            "color": {"field": "gender", "type": "nominal"}
+            }
+        }
+    }
+    
+    # Convert json_output to a JSON string
+    json_output_str = json.dumps(json_output, indent=2)
+    json_output_str = json_output_str.replace("{", "{{").replace("}", "}}")
+
+    # Create the prompt for Claude 3.5 Sonnet
+    prompt = {
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": 2048,
+        "system": """You are an expert AI assistant for Text-to-SQL conversion.
+
+        **Task:**
+        - Analyze the provided PDF for context and the CSV data structure to understand the schema and answer the user's question:
+        1. If it requires data retrieval, generate a SQL query and summarize the answer using the PDF context.
+        2. If it doesn't require SQL querying, provide only an explanation and set the SQL query to null.
+        3. If the question involves time-based data or any data that would benefit from visualization (especially date ranges, timestamps, or categorical distributions), also generate a Vega-Lite specification.""",
+        
+        "messages": [
+            {
+                "role": "user",
+                "content": f"""Explanation:\n{pdf_context}\n\nData Structure:\n{csv_context}\n\nQuestion: {query}\n\n**Instructions:**
+
+        Format your response ONLY as a valid JSON object with these fields:
+        - Answer: Your explanation based on the PDF context
+        - SQL Query: The SQL query to retrieve the requested data, or null if no query is needed
+        - SQL Query Answer: The result of the SQL query in a simple format
+        - Visualization: When appropriate, include a Vega-Lite JSON specification for visualization
+
+        For Vega-Lite visualizations:
+        - Use appropriate chart types based on the data (bar charts for categorical data, line charts for time series, etc.)
+        - Keep the specification clean and minimal
+        - For categorical distributions, use bar charts or pie charts as appropriate
+        - IMPORTANT: Do not add any text before or after the JSON object. Your entire response should be only the JSON object itself.
+
+        Example of exactly how your response should look:
+        {json_output_str}"""
+            }
+        ],
+        "temperature": 0.0
+    }
+
+    # Convert prompt to JSON string
+    input_text = json.dumps(prompt)
+    
+    # Call Claude 3.5 Sonnet model with streaming
+    response_stream = self.client.invoke_model_with_response_stream(
+        modelId=os.getenv("MODEL_ID"),
+        body=input_text
+    )
+    
+    # Process the streaming response
+    complete_response = ""
+    
+    for event in response_stream["body"]:
+        if "chunk" in event:
+            chunk_data = json.loads(event["chunk"]["bytes"].decode("utf-8"))
+            if "content" in chunk_data and len(chunk_data["content"]) > 0:
+                text_chunk = chunk_data["content"][0].get("text", "")
+                complete_response += text_chunk
+                
+                # Try to create a valid partial JSON object for each chunk
+                # This is the key change
+                try:
+                    # First, check if we have a complete JSON object
+                    if complete_response.strip().startswith('{') and complete_response.strip().endswith('}'):
+                        parsed_json = json.loads(complete_response)
+                        
+                        # Create a partial JSON with available fields
+                        partial_json = {}
+                        if "Answer" in parsed_json:
+                            partial_json["Answer"] = parsed_json["Answer"]
+                        if "SQL Query" in parsed_json:
+                            partial_json["SQL Query"] = parsed_json["SQL Query"]
+                        if "SQL Query Answer" in parsed_json:
+                            partial_json["SQL Query Answer"] = parsed_json["SQL Query Answer"]
+                            
+                        # Convert to JSON string
+                        partial_json_str = json.dumps(partial_json)
+                        yield text_chunk, partial_json_str
+                    else:
+                        # If not a complete JSON, don't try to parse it yet
+                        yield text_chunk, "{}"
+                except json.JSONDecodeError:
+                    # If parsing fails, just return an empty object
+                    yield text_chunk, "{}"
+    
+    # Try to parse the final response and save pie chart
+    try:
+        final_out = json.loads(complete_response)
+        final_json_str = json.dumps(final_out)
+        try:
+            self.save_pie_chart(final_out)
+        except Exception as e:
+            print(f"Error saving pie chart: {e}")
+        
+        # Return the final complete response
+        yield "", final_json_str
+    except json.JSONDecodeError as e:
+        print(f"Error parsing final JSON: {e}")
+        yield "", "{}"
+
+
+
+
+import os
+import chainlit as cl
+from aws_rag_pdf import TextToSQL
+import json
+
+# Global variables to store uploaded file path
+csv_path = None
+text2sql = None
+
+@cl.on_message
+async def handle_message(message: cl.Message):
+    global csv_path, text2sql
+
+    # Check if files are uploaded
+    if message.elements:
+        for uploaded_file in message.elements:
+            file_path = uploaded_file.path  
+            
+            if file_path.endswith(".csv"):
+                csv_path = file_path
+                text2sql = TextToSQL(csv_path, None, "faiss_index")  # Pass None for pdf_path
+                await cl.Message("✅ CSV uploaded successfully! Now ask your question.").send()
+                return
+
+        # If we get here, no CSV was found in the uploads
+        await cl.Message("⚠️ Please upload a CSV file.").send()
+        return
+
+    # Ensure CSV is uploaded before processing queries
+    if not csv_path:
+        await cl.Message("⚠️ Please upload a CSV file first.").send()
+        return
+
+    # Process user query after CSV is uploaded
+    user_query = message.content.strip()
+    
+    # Create message placeholders for streaming updates
+    answer_msg = cl.Message(content="**Answer:** Processing...", author="SQL Generator")
+    await answer_msg.send()
+    
+    sql_msg = cl.Message(content="```sql\nAnalyzing data...\n```", author="SQL Generator")
+    await sql_msg.send()
+    
+    sql_ans_msg = cl.Message(content="**Output:** Waiting for results...", author="SQL Generator")
+    await sql_ans_msg.send()
+    
+    # Start the stream
+    full_response = ""
+    
+    try:
+        # Get the streaming generator
+        response_generator = text2sql.generate_sql_query_with_stream(user_query)
+        
+        # Process each chunk
+        async for chunk, json_str in response_generator:
+            try:
+                # Try to parse the JSON if it's not empty
+                if json_str and json_str != "{}":
+                    current_json = json.loads(json_str)
+                    
+                    # Update the message components as data comes in
+                    if 'Answer' in current_json:
+                        answer_msg.content = f"**Answer:** {current_json['Answer']}"
+                        await answer_msg.update()
+                    
+                    if 'SQL Query' in current_json:
+                        sql_query = current_json['SQL Query']
+                        if sql_query:
+                            sql_msg.content = f"```sql\n{sql_query}\n```"
+                        else:
+                            sql_msg.content = "```\nNo SQL Query needed\n```"
+                        await sql_msg.update()
+                    
+                    if 'SQL Query Answer' in current_json:
+                        sql_answer = current_json['SQL Query Answer']
+                        sql_ans_msg.content = f"**Output:** {sql_answer}"
+                        await sql_ans_msg.update()
+                        
+                    # Save the full response for final processing
+                    full_response = json_str
+            except json.JSONDecodeError:
+                # This is expected during streaming as we might get partial JSON
+                continue
+        
+        # Final processing of the complete response
+        if full_response:
+            try:
+                final_json = json.loads(full_response)
+                
+                # Final updates to message components
+                answer = final_json.get('Answer', 'No answer provided')
+                sql = final_json.get('SQL Query', None)
+                ans = final_json.get('SQL Query Answer', None)
+                
+                answer_msg.content = f"**Answer:** {answer}"
+                await answer_msg.update()
+                
+                if sql:
+                    sql_msg.content = f"```sql\n{sql}\n```"
+                else:
+                    sql_msg.content = "```\nNo SQL Query needed\n```"
+                await sql_msg.update()
+                
+                if ans:
+                    sql_ans_msg.content = f"**Output:** {ans}"
+                else:
+                    sql_ans_msg.content = "**Output:** No results"
+                await sql_ans_msg.update()
+                
+                # Display the saved pie chart if available
+                file_path = "dynamic_pie_chart.png"
+                if os.path.exists(file_path):
+                    await cl.Message(
+                        content="📊 **Generated Pie Chart:**",
+                        elements=[cl.Image(path=file_path)]
+                    ).send()
+            except json.JSONDecodeError:
+                # Handle case where final response is not valid JSON
+                answer_msg.content = "**Answer:** Error: Could not parse final response as JSON"
+                await answer_msg.update()
+                sql_msg.content = "```\nError in processing\n```"
+                await sql_msg.update()
+                sql_ans_msg.content = "**Output:** Error in processing"
+                await sql_ans_msg.update()
+        else:
+            # Handle case where no valid response was received
+            answer_msg.content = "**Answer:** No valid response received"
+            await answer_msg.update()
+            sql_msg.content = "```\nNo valid response\n```"
+            await sql_msg.update()
+            sql_ans_msg.content = "**Output:** No valid response"
+            await sql_ans_msg.update()
+            
+    except Exception as e:
+        # Handle any exceptions that occur during processing
+        answer_msg.content = f"**Answer:** Error: {str(e)}"
+        await answer_msg.update()
+        sql_msg.content = f"```\nError: {str(e)}\n```"
+        await sql_msg.update()
+        sql_ans_msg.content = f"**Output:** Error: {str(e)}"
+        await sql_ans_msg.update()
+
+if __name__ == "__main__":
+    cl.run()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
